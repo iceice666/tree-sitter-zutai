@@ -1,0 +1,18 @@
+{
+  "name": "tree-sitter-zutai",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for Zutai general mode (.zt)",
+  "main": "bindings/node",
+  "keywords": [
+    "tree-sitter",
+    "parser",
+    "zutai"
+  ],
+  "devDependencies": {
+    "tree-sitter-cli": "^0.24.7"
+  },
+  "scripts": {
+    "build": "tree-sitter generate",
+    "test": "tree-sitter test"
+  }
+}
