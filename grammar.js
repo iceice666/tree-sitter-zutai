@@ -15,7 +15,12 @@
 module.exports = grammar({
   name: 'zutai',
 
-  extras: $ => [/\s+/],
+  extras: $ => [
+    /\s+/,
+    $.line_comment,
+    $.doc_comment,
+    $.block_comment,
+  ],
 
   word: $ => $.identifier,
 
@@ -148,6 +153,12 @@ module.exports = grammar({
     ),
 
     escape_seq: $ => token.immediate(seq('\\', /[^\r\n]/)),
+
+    // ─── Comments ─────────────────────────────────────────────────
+    // doc_comment before line_comment: `--|` is a longer prefix than `--`
+    doc_comment: $ => token(seq('--|', /.*/)),
+    line_comment: $ => token(seq('--', /[^|].*/)),
+    block_comment: $ => token(seq('--[', /[\s\S]*?/, ']--')),
 
     // ─── Atom literal ─────────────────────────────────────────────
 

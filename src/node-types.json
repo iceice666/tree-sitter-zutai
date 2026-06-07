@@ -2402,6 +2402,14 @@
     "named": false
   },
   {
+    "type": "block_comment",
+    "named": true
+  },
+  {
+    "type": "doc_comment",
+    "named": true
+  },
+  {
     "type": "else",
     "named": false
   },
@@ -2439,6 +2447,10 @@
   },
   {
     "type": "integer",
+    "named": true
+  },
+  {
+    "type": "line_comment",
     "named": true
   },
   {
