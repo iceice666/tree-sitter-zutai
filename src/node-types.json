@@ -24,7 +24,15 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -40,15 +48,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -65,6 +73,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -112,7 +124,15 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -128,15 +148,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -153,6 +173,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -195,7 +219,15 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -211,15 +243,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -240,6 +272,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -295,7 +331,15 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -311,15 +355,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -336,6 +380,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -427,7 +475,15 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -447,15 +503,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -472,6 +528,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -569,11 +629,19 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
             "named": true
           },
           {
             "type": "field_identifier",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -589,15 +657,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -614,6 +682,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -659,7 +731,15 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -675,15 +755,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -700,6 +780,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -753,11 +837,19 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
           "named": true
         },
         {
           "type": "field_identifier",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -773,15 +865,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -798,6 +890,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -855,7 +951,15 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -871,15 +975,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -896,6 +1000,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -946,7 +1054,15 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -962,15 +1078,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -987,6 +1103,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -1032,7 +1152,15 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -1048,15 +1176,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -1073,6 +1201,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -1118,7 +1250,15 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -1134,15 +1274,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -1159,6 +1299,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -1221,7 +1365,15 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -1234,6 +1386,10 @@
         },
         {
           "type": "import_expr",
+          "named": true
+        },
+        {
+          "type": "integer",
           "named": true
         },
         {
@@ -1266,6 +1422,10 @@
         },
         {
           "type": "record_pat",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -1331,7 +1491,15 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -1347,15 +1515,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -1372,6 +1540,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -1441,7 +1613,15 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -1457,15 +1637,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -1482,6 +1662,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -1532,7 +1716,15 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -1548,15 +1740,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -1573,6 +1765,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -1664,7 +1860,15 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -1680,15 +1884,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -1705,6 +1909,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -1758,11 +1966,19 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
           "named": true
         },
         {
           "type": "field_identifier",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -1778,15 +1994,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -1803,6 +2019,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -1845,7 +2065,15 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -1861,15 +2089,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -1886,6 +2114,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -1965,7 +2197,15 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -1981,15 +2221,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -2006,6 +2246,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -2104,11 +2348,19 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "declaration",
           "named": true
         },
         {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -2124,15 +2376,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -2149,6 +2401,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -2206,7 +2462,15 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -2226,15 +2490,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -2251,6 +2515,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {
@@ -2354,7 +2622,15 @@
             "named": true
           },
           {
+            "type": "bool",
+            "named": true
+          },
+          {
             "type": "field_access",
+            "named": true
+          },
+          {
+            "type": "float",
             "named": true
           },
           {
@@ -2370,15 +2646,15 @@
             "named": true
           },
           {
+            "type": "integer",
+            "named": true
+          },
+          {
             "type": "lambda",
             "named": true
           },
           {
             "type": "list",
-            "named": true
-          },
-          {
-            "type": "literal",
             "named": true
           },
           {
@@ -2395,6 +2671,10 @@
           },
           {
             "type": "record",
+            "named": true
+          },
+          {
+            "type": "string",
             "named": true
           },
           {
@@ -2438,7 +2718,15 @@
           "named": true
         },
         {
+          "type": "bool",
+          "named": true
+        },
+        {
           "type": "field_access",
+          "named": true
+        },
+        {
+          "type": "float",
           "named": true
         },
         {
@@ -2454,15 +2742,15 @@
           "named": true
         },
         {
+          "type": "integer",
+          "named": true
+        },
+        {
           "type": "lambda",
           "named": true
         },
         {
           "type": "list",
-          "named": true
-        },
-        {
-          "type": "literal",
           "named": true
         },
         {
@@ -2479,6 +2767,10 @@
         },
         {
           "type": "record",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         },
         {

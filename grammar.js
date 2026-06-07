@@ -5,10 +5,6 @@
  * Tree-sitter grammar for Zutai general mode (.zt) — v0 spec.
  *
  * Known limitations:
- *  - Negative literals (`-10`) are parsed as standalone number tokens.
- *    In `x - 10`, the parser may treat `-10` as one number applied to `x`
- *    rather than subtraction.  Highlighting is still correct for the common
- *    case `x * -1` (negative literal as argument).
  *  - Hyphenated field names (e.g. target-triple) are only recognised
  *    after `.` or `?.` and in record/type-record field names.
  *    In expression context (without `.`), they parse as subtraction.
@@ -142,7 +138,7 @@ module.exports = grammar({
     ),
 
     _apply_rhs: $ => choice(
-      $.literal,
+      $._apply_literal,
       $.atom,
       $.identifier,
       $.record,
@@ -170,13 +166,19 @@ module.exports = grammar({
 
     literal: $ => choice($.bool, $.float, $.integer, $.string),
 
+    _apply_literal: $ => choice(
+      $.bool,
+      $.string,
+      $._unsigned_float,
+      $._unsigned_integer,
+      $._negative_apply_float,
+      $._negative_apply_integer,
+    ),
+
     bool: $ => choice('true', 'false'),
 
     // Float before integer: "1.5" must match float, not integer then dot.
     // Also handles exponent-only form `1e9` and negative literals `-2.5e-3`.
-    // Negative form: the optional leading `-` makes `-10` a single token.
-    // Side-effect: `x - 10` may be parsed as application(x, -10) rather than
-    // subtraction — see file-level comment for details.
     float: $ => token(seq(
       optional('-'),
       /[0-9]+/,
@@ -187,6 +189,30 @@ module.exports = grammar({
     )),
 
     integer: $ => token(seq(optional('-'), /[0-9]+/)),
+
+    _unsigned_float: $ => alias(token(seq(
+      /[0-9]+/,
+      choice(
+        seq('.', /[0-9]+/, optional(seq(/[eE]/, optional(/[+-]/), /[0-9]+/))),
+        seq(/[eE]/, optional(/[+-]/), /[0-9]+/),
+      ),
+    )), $.float),
+
+    _unsigned_integer: $ => alias(token(/[0-9]+/), $.integer),
+
+    // Application to a negative number is whitespace-sensitive:
+    // `f -1` is application, while `f-1` and `f - 1` are subtraction.
+    _negative_apply_float: $ => alias(token.immediate(seq(
+      /[ \t\r]+/,
+      '-',
+      /[0-9]+/,
+      choice(
+        seq('.', /[0-9]+/, optional(seq(/[eE]/, optional(/[+-]/), /[0-9]+/))),
+        seq(/[eE]/, optional(/[+-]/), /[0-9]+/),
+      ),
+    )), $.float),
+
+    _negative_apply_integer: $ => alias(token.immediate(seq(/[ \t\r]+/, '-', /[0-9]+/)), $.integer),
 
     string: $ => seq(
       '"',
