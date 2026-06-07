@@ -5,12 +5,13 @@
  * Tree-sitter grammar for Zutai general mode (.zt) — v0 spec.
  *
  * Known limitations:
- *  - Numeric literals do not include a leading minus sign.
- *    `f -1` is parsed as subtraction, not application of -1.
- *    Write `f (-1)` or `f (0 - 1)` as a workaround.
+ *  - Negative literals (`-10`) are parsed as standalone number tokens.
+ *    In `x - 10`, the parser may treat `-10` as one number applied to `x`
+ *    rather than subtraction.  Highlighting is still correct for the common
+ *    case `x * -1` (negative literal as argument).
  *  - Hyphenated field names (e.g. target-triple) are only recognised
- *    after `.` or `?.`; inside record literals, use plain identifiers.
- *    Access via cfg.target-triple highlights correctly.
+ *    after `.` or `?.` and in record/type-record field names.
+ *    In expression context (without `.`), they parse as subtraction.
  */
 module.exports = grammar({
   name: 'zutai',
@@ -24,12 +25,10 @@ module.exports = grammar({
 
   word: $ => $.identifier,
 
-  // GLR disambiguation: an empty `{}` after `match expr` could be the match body
-  // or a record literal passed as an argument.  Declaring the conflict lets the
-  // parser try both paths; only the match-body path completes a valid match_expr.
+  // GLR disambiguation: multiple constructs start with `{`.
   conflicts: $ => [
-    [$.record, $.match_expr],
-    [$.record, $.func_block],
+    [$.record, $.type_record],
+    [$.record, $.type_record, $.match_expr],
   ],
 
   rules: {
@@ -46,29 +45,35 @@ module.exports = grammar({
         ':=',
         field('value', $._expr),
       )),
-      // name :: <A,B>? type TypeExpr
+      // name :: <A,B>? type TypeBody
+      // Uses _atom_expr (not _expr) to prevent the type body from greedily
+      // consuming comparison/pipeline operators that belong to the next declaration.
+      // For complex type aliases like `Int -> Int`, wrap in parens: `(Int -> Int)`.
       prec(2, seq(
         field('name', $.identifier),
         '::',
         optional($.type_params),
         'type',
-        field('type', $._expr),
+        field('type', $._atom_expr),
       )),
       // name :: <A,B>? TypeExpr = expr
+      // `=` terminates the type naturally (not a binary operator), so _expr is safe.
       prec(2, seq(
         field('name', $.identifier),
         '::',
         optional($.type_params),
-        field('type', $._expr),
+        field('type', $._decl_type),
         '=',
         field('value', $._expr),
       )),
       // name :: <A,B>? TypeExpr { | clauses }
+      // Uses _decl_type (not _expr) to prevent `{` from being consumed by application
+      // instead of being recognized as the opening of func_block.
       prec(2, seq(
         field('name', $.identifier),
         '::',
         optional($.type_params),
-        field('type', $._expr),
+        field('type', $._decl_type),
         field('body', $.func_block),
       )),
       // name pattern+ = expr  (simple function, no type sig)
@@ -99,14 +104,49 @@ module.exports = grammar({
     // Expressions
     // ══════════════════════════════════════════════════════════════
 
-    // _atom_expr: expressions that cannot be the left side of application
-    // without parentheses.  Restricting application to `_expr _atom_expr`
-    // prevents the conflict explosion that `_expr _expr` would cause.
+    // ─── Declaration type expression ──────────────────────────────
+    // Used as the type in function and typed-value declarations.
+    // Excludes { } and [ ] as direct application arguments so that `{` after
+    // the type is always recognised as the start of func_block (not a record
+    // being applied to the type).  Complex types like `List Int` still work;
+    // use `(List {a : Int})` with parens when an application with a record arg
+    // is genuinely needed.
+
+    _decl_type: $ => choice(
+      $.identifier,
+      $.atom,
+      $.type_form,                                  // type { … } / type [ … ]
+      seq('(', $._expr, ')'),                       // parenthesised escape hatch
+      prec.right(10, seq($._decl_type, '->', $._decl_type)),  // function type
+      prec(100, seq($._decl_type, '?')),             // optional type
+      prec.left(90, seq($._decl_type, $._decl_type_arg)),     // type application
+      prec.left(100, seq($._decl_type, '.', $.field_identifier)), // qualified type
+    ),
+
+    // Arguments to type application: identifiers, atoms, and parenthesised only.
+    // Records and lists are excluded here; use parens if you need them.
+    _decl_type_arg: $ => choice(
+      $.identifier,
+      $.atom,
+      seq('(', $._expr, ')'),
+    ),
+
+    // _atom_expr: any expression that can be the right operand of application.
+    // type_form is excluded from _apply_rhs to prevent `f type { }` from greedily
+    // consuming a `type` keyword that belongs to the next declaration.
+    // Use `f (type { })` with parens when passing a type value to a function.
+
     _atom_expr: $ => choice(
+      $._apply_rhs,
+      $.type_form,
+    ),
+
+    _apply_rhs: $ => choice(
       $.literal,
       $.atom,
       $.identifier,
       $.record,
+      $.type_record,
       $.block,
       $.list,
       $.tuple,
@@ -114,7 +154,6 @@ module.exports = grammar({
       $.match_expr,
       $.if_expr,
       $.import_expr,
-      $.type_form,
       seq('(', $._expr, ')'),
     ),
 
@@ -134,14 +173,20 @@ module.exports = grammar({
     bool: $ => choice('true', 'false'),
 
     // Float before integer: "1.5" must match float, not integer then dot.
+    // Also handles exponent-only form `1e9` and negative literals `-2.5e-3`.
+    // Negative form: the optional leading `-` makes `-10` a single token.
+    // Side-effect: `x - 10` may be parsed as application(x, -10) rather than
+    // subtraction — see file-level comment for details.
     float: $ => token(seq(
+      optional('-'),
       /[0-9]+/,
-      '.',
-      /[0-9]+/,
-      optional(seq(/[eE]/, optional(/[+-]/), /[0-9]+/)),
+      choice(
+        seq('.', /[0-9]+/, optional(seq(/[eE]/, optional(/[+-]/), /[0-9]+/))),
+        seq(/[eE]/, optional(/[+-]/), /[0-9]+/),
+      ),
     )),
 
-    integer: $ => /[0-9]+/,
+    integer: $ => token(seq(optional('-'), /[0-9]+/)),
 
     string: $ => seq(
       '"',
@@ -155,10 +200,25 @@ module.exports = grammar({
     escape_seq: $ => token.immediate(seq('\\', /[^\r\n]/)),
 
     // ─── Comments ─────────────────────────────────────────────────
-    // doc_comment before line_comment: `--|` is a longer prefix than `--`
-    doc_comment: $ => token(seq('--|', /.*/)),
-    line_comment: $ => token(seq('--', /[^|].*/)),
-    block_comment: $ => token(seq('--[', /[\s\S]*?/, ']--')),
+    // Priorities ensure longest/most-specific prefix wins:
+    //   block_comment (3): --[ … ]--
+    //   doc_comment   (2): --| …
+    //   line_comment  (1): -- …  (but NOT --[ or --|)
+    // Priority ensures the longer/specific prefix wins when multiple rules
+    // could start at the same `--` position:
+    //   block_comment (3): --[ … ]--   (longest → wins over both others)
+    //   doc_comment   (2): --| …       (longer than line_comment for same prefix)
+    //   line_comment  (1): --…         (fallback; regex excludes [| so won't greedily
+    //                                   consume what the longer rules should own)
+    // RE2-compatible block comment (no non-greedy allowed in RE2):
+    // Matches content that never forms the sequence `]--`.
+    // Inside the loop: any char that isn't `]`, OR `]` not followed by `-`,
+    // OR `]-` not followed by `-`.
+    block_comment: $ => token(prec(3, /--\[(?:[^\]]|\](?:[^-]|-[^-]))*\]--/)),
+    doc_comment:   $ => token(prec(2, /--\|[^\n]*/)),
+    // `--` followed by any char that is not `[`, `|`, or newline, then rest of line.
+    // When the input starts with `--|` or `--[`, the higher-priority rules win.
+    line_comment:  $ => token(prec(1, /--(?:[^\[|\n][^\n]*)?/)),
 
     // ─── Atom literal ─────────────────────────────────────────────
 
@@ -166,22 +226,43 @@ module.exports = grammar({
 
     // ─── Identifiers ──────────────────────────────────────────────
 
-    // Standard identifier: no hyphens, used in expression context.
+    // Standard identifier: no hyphens, used in expression/binding context.
     identifier: $ => /[A-Za-z_][A-Za-z0-9_]*/,
 
+    // Hyphenated identifier: at least one hyphen segment (e.g. target-triple).
+    // Does NOT overlap with `identifier` so there is no lexer conflict.
+    hyphenated_identifier: $ => /[A-Za-z_][A-Za-z0-9_]*(?:-[A-Za-z0-9_][A-Za-z0-9_]*)+/,
+
+    // Field name = identifier or hyphenated form (used in records / type records).
+    _field_id: $ => choice($.identifier, $.hyphenated_identifier),
+
     // Field identifier: allows hyphens, used only after `.` / `?.`.
-    // Tree-sitter's context-based lexer ensures this is only attempted
-    // when a field name is valid, so there is no conflict with identifier.
+    // Context-based lexing means it is only tried in field-access position.
     field_identifier: $ => /[A-Za-z_][A-Za-z0-9_-]*/,
 
-    // ─── Records ──────────────────────────────────────────────────
+    // ─── Value records ────────────────────────────────────────────
+    // { field = expr; … }  (value context)
 
     record: $ => seq('{', repeat($.record_field), '}'),
 
     record_field: $ => seq(
-      field('name', $.identifier),
+      field('name', $._field_id),
       '=',
       field('value', $._expr),
+      ';',
+    ),
+
+    // ─── Type records ─────────────────────────────────────────────
+    // { field : Type; … }  (type context — appears after `type`)
+    // Optional fields use `field? : Type;`
+
+    type_record: $ => seq('{', repeat($.type_field), '}'),
+
+    type_field: $ => seq(
+      field('name', $._field_id),
+      optional('?'),
+      ':',
+      field('type', $._expr),
       ';',
     ),
 
@@ -201,6 +282,7 @@ module.exports = grammar({
     // ─── Tuples ───────────────────────────────────────────────────
 
     // Unit () or 2+ comma-separated elements.
+    // Named elements use `=` in value context, `:` in type context.
     tuple: $ => choice(
       seq('(', ')'),
       seq(
@@ -214,8 +296,9 @@ module.exports = grammar({
     ),
 
     _tuple_elem: $ => choice(
-      seq($.identifier, '=', $._expr), // named: field = expr
-      $._expr,                          // positional
+      seq($._field_id, '=', $._expr), // value field: (field = expr, …)
+      seq($._field_id, ':', $._expr), // type field:  (field : Type, …)
+      $._expr,                         // positional
     ),
 
     // ─── Lambda ───────────────────────────────────────────────────
@@ -261,8 +344,11 @@ module.exports = grammar({
     import_path: $ => /[A-Za-z_][A-Za-z0-9_-]*(?:\.[A-Za-z_][A-Za-z0-9_-]*)*/,
 
     // ─── Type introduction ────────────────────────────────────────
+    // Restricted to _atom_expr to prevent the type body from greedily consuming
+    // the next top-level declaration.  Complex type expressions like `Int -> Int`
+    // must be wrapped in parens when used inside `type (...)`.
 
-    type_form: $ => seq('type', $._expr),
+    type_form: $ => seq('type', $._atom_expr),
 
     // ─── Operators ────────────────────────────────────────────────
 
@@ -291,7 +377,9 @@ module.exports = grammar({
     ),
 
     // f x  (function application, left-assoc)
-    application: $ => prec.left(90, seq($._expr, $._atom_expr)),
+    // Right side uses _apply_rhs (excludes type_form) to prevent `f type ...`
+    // from greedily consuming a `type` keyword that starts the next declaration.
+    application: $ => prec.left(90, seq($._expr, $._apply_rhs)),
 
     // T?  (postfix optional type or optional value)
     postfix_opt: $ => prec(100, seq($._expr, '?')),
@@ -329,12 +417,12 @@ module.exports = grammar({
     ),
 
     _pat_elem: $ => choice(
-      seq($.identifier, '=', $._pattern), // named: field = pattern
-      $._pattern,                          // positional
+      seq($._field_id, '=', $._pattern), // named: field = pattern
+      $._pattern,                         // positional
     ),
 
     record_pat: $ => seq('{', repeat($.record_pat_field), '}'),
 
-    record_pat_field: $ => seq($.identifier, '=', $._pattern, ';'),
+    record_pat_field: $ => seq($._field_id, '=', $._pattern, ';'),
   },
 });
