@@ -2,12 +2,11 @@
 // @ts-check
 
 /**
- * Tree-sitter grammar for Zutai general mode (.zt) — v0 spec.
+ * Tree-sitter grammar for Zutai general mode (.zt).
  *
- * Known limitations:
- *  - Hyphenated field names (e.g. target-triple) are only recognised
- *    after `.` or `?.` and in record/type-record field names.
- *    In expression context (without `.`), they parse as subtraction.
+ * This grammar tracks the implemented surface syntax used by the Rust frontend:
+ * declarations, type expressions, tagged payloads, record updates, selective
+ * projection, algebraic-effect punctuation, constraints, and witnesses.
  */
 module.exports = grammar({
   name: 'zutai',
@@ -21,10 +20,29 @@ module.exports = grammar({
 
   word: $ => $.identifier,
 
-  // GLR disambiguation: multiple constructs start with `{`.
   conflicts: $ => [
+    [$.record, $.type_record, $.block],
+    [$.record, $.type_record, $.record_pattern],
+    [$.record, $.block],
+    [$.type_record, $.type_union],
+    [$.tuple, $.type_tuple, $.tuple_pattern],
+    [$.declaration, $.function_clause],
+    [$.tagged_value, $.atom],
+    [$.tagged_pattern, $.atom],
+    [$._expr, $.postfix_expr],
+    [$._atom_expr, $._type_atom],
+    [$.literal, $._type_atom],
+    [$._type_atom, $.type_tuple_item],
     [$.record, $.type_record],
-    [$.record, $.type_record, $.match_expr],
+    [$._field_id, $.local_binding],
+    [$._atom_expr, $.union_variant],
+    [$.tuple, $.type_tuple],
+    [$.record, $.clause_block],
+    [$.record, $.select_fields],
+    [$._atom_expr, $._pattern],
+    [$.record, $.record_pattern],
+    [$.tuple, $.tuple_pattern],
+    [$.tagged_tuple_payload, $.tagged_tuple_pattern_payload],
   ],
 
   rules: {
@@ -35,63 +53,132 @@ module.exports = grammar({
     // ══════════════════════════════════════════════════════════════
 
     declaration: $ => choice(
-      // name := expr
-      prec(2, seq(
-        field('name', $.identifier),
-        ':=',
-        field('value', $._expr),
-      )),
-      // name :: <A,B>? type TypeBody
-      // Uses _atom_expr (not _expr) to prevent the type body from greedily
-      // consuming comparison/pipeline operators that belong to the next declaration.
-      // For complex type aliases like `Int -> Int`, wrap in parens: `(Int -> Int)`.
-      prec(2, seq(
-        field('name', $.identifier),
-        '::',
-        optional($.type_params),
-        'type',
-        field('type', $._atom_expr),
-      )),
-      // name :: <A,B>? TypeExpr = expr
-      // `=` terminates the type naturally (not a binary operator), so _expr is safe.
-      prec(2, seq(
-        field('name', $.identifier),
-        '::',
-        optional($.type_params),
-        field('type', $._decl_type),
-        '=',
-        field('value', $._expr),
-      )),
-      // name :: <A,B>? TypeExpr { | clauses }
-      // Uses _decl_type (not _expr) to prevent `{` from being consumed by application
-      // instead of being recognized as the opening of func_block.
-      prec(2, seq(
-        field('name', $.identifier),
-        '::',
-        optional($.type_params),
-        field('type', $._decl_type),
-        field('body', $.func_block),
-      )),
-      // name pattern+ = expr  (simple function, no type sig)
-      prec(1, seq(
-        field('name', $.identifier),
-        repeat1(field('param', $._pattern)),
-        '=',
-        field('body', $._expr),
-      )),
+      $.witness_declaration,
+      $.constraint_declaration,
+      $.type_alias_declaration,
+      $.import_declaration,
+      $.function_declaration,
+      $.typed_declaration,
+      $.inferred_declaration,
+      $.no_signature_function,
     ),
 
-    type_params: $ => seq('<', $.identifier, repeat(seq(',', $.identifier)), '>'),
+    inferred_declaration: $ => prec(5, seq(
+      field('name', $.identifier),
+      '::=',
+      field('value', $._expr),
+    )),
 
-    func_block: $ => seq('{', repeat($.clause), '}'),
+    typed_declaration: $ => prec(1, seq(
+      field('name', $.identifier),
+      '::',
+      field('type', $._type_expr),
+      '=',
+      field('value', $._expr),
+    )),
 
-    clause: $ => seq(
-      '|',
+    import_declaration: $ => prec(3, seq(
+      field('name', $.identifier),
+      '::',
+      'import',
+      field('source', choice($.string, $.import_path)),
+    )),
+
+    type_alias_declaration: $ => prec(3, seq(
+      field('name', $.identifier),
+      '::',
+      optional($.type_params),
+      'type',
+      field('type', $._type_expr),
+    )),
+
+    function_declaration: $ => prec(2, seq(
+      field('name', $.identifier),
+      '::',
+      optional($.type_params),
+      field('type', $._type_expr),
+      repeat1($.function_clause),
+    )),
+
+    function_clause: $ => prec.right(seq(
+      '=',
       repeat1(field('param', $._pattern)),
       optional(field('guard', $.guard)),
       '=>',
       field('body', $._expr),
-      ';',
+      optional(';'),
+    )),
+
+    no_signature_function: $ => prec(1, seq(
+      field('name', $.identifier),
+      repeat1(field('param', $._pattern)),
+      '=',
+      field('body', $._expr),
+    )),
+
+    constraint_declaration: $ => prec(4, seq(
+      field('name', $.identifier),
+      '::',
+      optional($.type_params),
+      '@',
+      field('target', $._type_atom),
+      field('body', $.constraint_body),
+      optional(field('derive', $.derive_clause)),
+    )),
+
+    constraint_body: $ => seq('{', repeat($.constraint_method), '}'),
+
+    constraint_method: $ => seq(
+      field('name', $.method_name),
+      optional('?'),
+      '::',
+      optional($.type_params),
+      field('type', $._type_expr),
+      repeat($.function_clause),
+      optional(';'),
+    ),
+
+    witness_declaration: $ => prec(4, seq(
+      field('constraint', $.identifier),
+      '@',
+      field('target', $._type_atom),
+      '::',
+      optional($.type_params),
+      field('body', $.witness_body),
+    )),
+
+    witness_body: $ => choice(
+      'derive',
+      seq('{', repeat($.witness_field), '}'),
+    ),
+
+    witness_field: $ => seq(
+      field('name', $.method_name),
+      '=',
+      field('value', $._expr),
+      optional(';'),
+    ),
+
+    derive_clause: $ => choice(
+      'derive',
+      seq('derive', '=', optional($.type_params), '=>', field('body', $._expr)),
+    ),
+
+    method_name: $ => choice(
+      $.identifier,
+      seq('(', $.operator_token, ')'),
+    ),
+
+    operator_token: $ => token(/[!$%&*+\-.\/:<=>?@^|~]+/),
+
+    type_params: $ => seq('<', $.type_param, repeat(seq(',', $.type_param)), optional(','), '>'),
+
+    type_param: $ => seq(
+      field('name', $.identifier),
+      optional(choice(
+        seq(':', $.identifier, repeat(seq('+', $.identifier))),
+        seq('::', $._type_expr),
+      )),
     ),
 
     guard: $ => seq('if', $._expr),
@@ -100,85 +187,43 @@ module.exports = grammar({
     // Expressions
     // ══════════════════════════════════════════════════════════════
 
-    // ─── Declaration type expression ──────────────────────────────
-    // Used as the type in function and typed-value declarations.
-    // Excludes { } and [ ] as direct application arguments so that `{` after
-    // the type is always recognised as the start of func_block (not a record
-    // being applied to the type).  Complex types like `List Int` still work;
-    // use `(List {a : Int})` with parens when an application with a record arg
-    // is genuinely needed.
-
-    _decl_type: $ => choice(
-      $.identifier,
-      $.atom,
-      $.type_form,                                  // type { … } / type [ … ]
-      seq('(', $._expr, ')'),                       // parenthesised escape hatch
-      prec.right(10, seq($._decl_type, '->', $._decl_type)),  // function type
-      prec(100, seq($._decl_type, '?')),             // optional type
-      prec.left(90, seq($._decl_type, $._decl_type_arg)),     // type application
-      prec.left(100, seq($._decl_type, '.', $.field_identifier)), // qualified type
-    ),
-
-    // Arguments to type application: identifiers, atoms, and parenthesised only.
-    // Records and lists are excluded here; use parens if you need them.
-    _decl_type_arg: $ => choice(
-      $.identifier,
-      $.atom,
-      seq('(', $._expr, ')'),
-    ),
-
-    // _atom_expr: any expression that can be the right operand of application.
-    // type_form is excluded from _apply_rhs to prevent `f type { }` from greedily
-    // consuming a `type` keyword that belongs to the next declaration.
-    // Use `f (type { })` with parens when passing a type value to a function.
-
-    _atom_expr: $ => choice(
-      $._apply_rhs,
-      $.type_form,
-    ),
-
-    _apply_rhs: $ => choice(
-      $._apply_literal,
-      $.atom,
-      $.identifier,
-      $.record,
-      $.type_record,
-      $.block,
-      $.list,
-      $.tuple,
-      $.lambda,
-      $.match_expr,
-      $.if_expr,
-      $.import_expr,
-      seq('(', $._expr, ')'),
-    ),
-
     _expr: $ => choice(
       $._atom_expr,
       $.application,
+      $.select_operator,
       $.binary_op,
       $.field_access,
       $.optional_chain,
-      $.postfix_opt,
+      $.record_update,
     ),
 
-    // ─── Literals ────────────────────────────────────────────────
+    _atom_expr: $ => choice(
+      $.literal,
+      $.tagged_value,
+      $.atom,
+      $.identifier,
+      $.record,
+      $.block,
+      $.tuple,
+      $.list,
+      $.lambda,
+      $.if_expr,
+      $.match_expr,
+      $.import_expr,
+      $.type_form,
+      $.select_expr,
+      $.perform_expr,
+      $.handle_expr,
+      $.resume_expr,
+      $.witness_reflect_expr,
+      $.generator_expr,
+      seq('(', $._expr, ')'),
+    ),
 
     literal: $ => choice($.bool, $.float, $.integer, $.string),
 
-    _apply_literal: $ => choice(
-      $.bool,
-      $.string,
-      $._unsigned_float,
-      $._unsigned_integer,
-      $._negative_apply_float,
-      $._negative_apply_integer,
-    ),
-
     bool: $ => choice('true', 'false'),
 
-    // Float before integer: "1.5" must match float, not integer then dot.
-    // Also handles exponent-only form `1e9` and negative literals `-2.5e-3`.
     float: $ => token(seq(
       optional('-'),
       /[0-9]+/,
@@ -186,33 +231,24 @@ module.exports = grammar({
         seq('.', /[0-9]+/, optional(seq(/[eE]/, optional(/[+-]/), /[0-9]+/))),
         seq(/[eE]/, optional(/[+-]/), /[0-9]+/),
       ),
+      optional(choice(
+        'i8', 'i16', 'i32', 'i64',
+        'u8', 'u16', 'u32', 'u64',
+        'f32', 'f64',
+        'p32', 'p64',
+        /p32e[0-9]+/,
+        /p64e[0-9]+/,
+      )),
     )),
 
-    integer: $ => token(seq(optional('-'), /[0-9]+/)),
-
-    _unsigned_float: $ => alias(token(seq(
-      /[0-9]+/,
-      choice(
-        seq('.', /[0-9]+/, optional(seq(/[eE]/, optional(/[+-]/), /[0-9]+/))),
-        seq(/[eE]/, optional(/[+-]/), /[0-9]+/),
-      ),
-    )), $.float),
-
-    _unsigned_integer: $ => alias(token(/[0-9]+/), $.integer),
-
-    // Application to a negative number is whitespace-sensitive:
-    // `f -1` is application, while `f-1` and `f - 1` are subtraction.
-    _negative_apply_float: $ => alias(token.immediate(seq(
-      /[ \t\r]+/,
-      '-',
-      /[0-9]+/,
-      choice(
-        seq('.', /[0-9]+/, optional(seq(/[eE]/, optional(/[+-]/), /[0-9]+/))),
-        seq(/[eE]/, optional(/[+-]/), /[0-9]+/),
-      ),
-    )), $.float),
-
-    _negative_apply_integer: $ => alias(token.immediate(seq(/[ \t\r]+/, '-', /[0-9]+/)), $.integer),
+    integer: $ => token(seq(optional('-'), /[0-9]+/, optional(choice(
+      'i8', 'i16', 'i32', 'i64',
+      'u8', 'u16', 'u32', 'u64',
+      'f32', 'f64',
+      'p32', 'p64',
+      /p32e[0-9]+/,
+      /p64e[0-9]+/,
+    )))),
 
     string: $ => seq(
       '"',
@@ -225,133 +261,69 @@ module.exports = grammar({
 
     escape_seq: $ => token.immediate(seq('\\', /[^\r\n]/)),
 
-    // ─── Comments ─────────────────────────────────────────────────
-    // Priorities ensure longest/most-specific prefix wins:
-    //   block_comment (3): --[ … ]--
-    //   doc_comment   (2): --| …
-    //   line_comment  (1): -- …  (but NOT --[ or --|)
-    // Priority ensures the longer/specific prefix wins when multiple rules
-    // could start at the same `--` position:
-    //   block_comment (3): --[ … ]--   (longest → wins over both others)
-    //   doc_comment   (2): --| …       (longer than line_comment for same prefix)
-    //   line_comment  (1): --…         (fallback; regex excludes [| so won't greedily
-    //                                   consume what the longer rules should own)
-    // RE2-compatible block comment (no non-greedy allowed in RE2):
-    // Matches content that never forms the sequence `]--`.
-    // Inside the loop: any char that isn't `]`, OR `]` not followed by `-`,
-    // OR `]-` not followed by `-`.
     block_comment: $ => token(prec(3, /--\[(?:[^\]]|\](?:[^-]|-[^-]))*\]--/)),
-    doc_comment:   $ => token(prec(2, /--\|[^\n]*/)),
-    // `--` followed by any char that is not `[`, `|`, or newline, then rest of line.
-    // When the input starts with `--|` or `--[`, the higher-priority rules win.
-    line_comment:  $ => token(prec(1, /--(?:[^\[|\n][^\n]*)?/)),
-
-    // ─── Atom literal ─────────────────────────────────────────────
+    doc_comment: $ => token(prec(2, /--\|[^\n]*/)),
+    line_comment: $ => token(prec(1, /--(?:[^\[|\n][^\n]*)?/)),
 
     atom: $ => seq('#', token.immediate(/[A-Za-z_][A-Za-z0-9_-]*/)),
 
-    // ─── Identifiers ──────────────────────────────────────────────
-
-    // Standard identifier: no hyphens, used in expression/binding context.
     identifier: $ => /[A-Za-z_][A-Za-z0-9_]*/,
-
-    // Hyphenated identifier: at least one hyphen segment (e.g. target-triple).
-    // Does NOT overlap with `identifier` so there is no lexer conflict.
     hyphenated_identifier: $ => /[A-Za-z_][A-Za-z0-9_]*(?:-[A-Za-z0-9_][A-Za-z0-9_]*)+/,
-
-    // Field name = identifier or hyphenated form (used in records / type records).
     _field_id: $ => choice($.identifier, $.hyphenated_identifier),
-
-    // Field identifier: allows hyphens, used only after `.` / `?.`.
-    // Context-based lexing means it is only tried in field-access position.
     field_identifier: $ => /[A-Za-z_][A-Za-z0-9_-]*/,
 
-    // ─── Value records ────────────────────────────────────────────
-    // { field = expr; … }  (value context)
+    tagged_value: $ => prec(2, seq(
+      field('tag', $.atom),
+      field('payload', choice($.record, $.tagged_tuple_payload)),
+    )),
+
+    tagged_tuple_payload: $ => seq(
+      '(',
+      optional(seq($._tuple_elem, repeat(seq(',', $._tuple_elem)), optional(','))),
+      ')',
+    ),
 
     record: $ => seq('{', repeat($.record_field), '}'),
 
     record_field: $ => seq(
       field('name', $._field_id),
       '=',
-      field('value', $._expr),
+      optional(field('value', $._expr)),
       ';',
     ),
 
-    // ─── Type records ─────────────────────────────────────────────
-    // { field : Type; … }  (type context — appears after `type`)
-    // Optional fields use `field? : Type;`
-
-    type_record: $ => seq('{', repeat($.type_field), '}'),
-
-    type_field: $ => seq(
-      field('name', $._field_id),
-      optional('?'),
-      ':',
-      field('type', $._expr),
-      ';',
-    ),
-
-    // ─── Block expressions ────────────────────────────────────────
-
-    // Block: one or more local bindings followed by a final expression.
-    block: $ => seq('{', repeat1($.local_binding), $._expr, '}'),
-
-    local_binding: $ => seq($.identifier, ':=', $._expr, ';'),
-
-    // ─── Lists ────────────────────────────────────────────────────
-
-    list: $ => seq('[', repeat($.list_item), ']'),
-
-    list_item: $ => seq($._expr, ';'),
-
-    // ─── Tuples ───────────────────────────────────────────────────
-
-    // Unit () or 2+ comma-separated elements.
-    // Named elements use `=` in value context, `:` in type context.
-    tuple: $ => choice(
-      seq('(', ')'),
-      seq(
-        '(',
-        $._tuple_elem,
-        ',',
-        $._tuple_elem,
-        repeat(seq(',', $._tuple_elem)),
-        ')',
-      ),
-    ),
-
-    _tuple_elem: $ => choice(
-      seq($._field_id, '=', $._expr), // value field: (field = expr, …)
-      seq($._field_id, ':', $._expr), // type field:  (field : Type, …)
-      $._expr,                         // positional
-    ),
-
-    // ─── Lambda ───────────────────────────────────────────────────
-
-    // \pattern+ . body
-    lambda: $ => seq('\\', repeat1($._pattern), '.', $._expr),
-
-    // ─── Match ────────────────────────────────────────────────────
-
-    match_expr: $ => seq(
-      'match',
-      field('scrutinee', $._expr),
+    block: $ => seq(
       '{',
-      repeat($.match_arm),
+      repeat($.local_binding),
+      $._expr,
+      repeat(seq(';', $._expr)),
+      optional(';'),
       '}',
     ),
 
-    match_arm: $ => seq(
-      '|',
-      field('pattern', $._pattern),
-      optional(field('guard', $.guard)),
-      '=>',
-      field('body', $._expr),
+    local_binding: $ => seq(
+      field('name', $.identifier),
+      choice(
+        seq(':=', field('value', $._expr)),
+        seq(':', field('type', $._type_expr), '=', field('value', $._expr)),
+      ),
       ';',
     ),
 
-    // ─── If ───────────────────────────────────────────────────────
+    list: $ => seq('[', repeat($.list_item), ']'),
+    list_item: $ => seq($._expr, ';'),
+
+    tuple: $ => choice(
+      seq('(', ')'),
+      seq('(', $._tuple_elem, ',', optional(seq($._tuple_elem, repeat(seq(',', $._tuple_elem)), optional(','))), ')'),
+    ),
+
+    _tuple_elem: $ => choice(
+      seq($._field_id, '=', $._expr),
+      $._expr,
+    ),
+
+    lambda: $ => seq('\\', repeat1($._pattern), '.', $._expr),
 
     if_expr: $ => seq(
       'if',
@@ -362,57 +334,146 @@ module.exports = grammar({
       field('alternative', $._expr),
     ),
 
-    // ─── Import ───────────────────────────────────────────────────
-
-    import_expr: $ => seq('import', choice($.string, $.import_path)),
-
-    // Unquoted path shorthand, e.g. config.zti
-    import_path: $ => /[A-Za-z_][A-Za-z0-9_-]*(?:\.[A-Za-z_][A-Za-z0-9_-]*)*/,
-
-    // ─── Type introduction ────────────────────────────────────────
-    // Restricted to _atom_expr to prevent the type body from greedily consuming
-    // the next top-level declaration.  Complex type expressions like `Int -> Int`
-    // must be wrapped in parens when used inside `type (...)`.
-
-    type_form: $ => seq('type', $._atom_expr),
-
-    // ─── Operators ────────────────────────────────────────────────
-
-    // Precedence levels (lower number = lower precedence = binds looser):
-    //  10  ->   (function type, right-assoc)
-    //  20  |>   (pipeline fwd, left) / <|  (pipeline bwd, right)
-    //  30  ??   (default, right)
-    //  40  ||   (logical or, left)
-    //  50  &&   (logical and, left)
-    //  60  == != < <= > >=  (comparison, non-assoc)
-    //  70  + -  (add/sub, left)
-    //  80  * /  (mul/div, left)
-    //  90  application  (left)
-    // 100  field access / postfix ?  (highest)
-
-    binary_op: $ => choice(
-      prec.right(10,  seq($._expr, '->', $._expr)),
-      prec.left(20,   seq($._expr, '|>', $._expr)),
-      prec.right(20,  seq($._expr, '<|', $._expr)),
-      prec.right(30,  seq($._expr, '??', $._expr)),
-      prec.left(40,   seq($._expr, '||', $._expr)),
-      prec.left(50,   seq($._expr, '&&', $._expr)),
-      prec.left(60,   seq($._expr, choice('==', '!=', '<=', '>=', '<', '>'), $._expr)),
-      prec.left(70,   seq($._expr, choice('+', '-'), $._expr)),
-      prec.left(80,   seq($._expr, choice('*', '/'), $._expr)),
+    match_expr: $ => seq(
+      'match',
+      field('scrutinee', $._expr),
+      $.clause_block,
     ),
 
-    // f x  (function application, left-assoc)
-    // Right side uses _apply_rhs (excludes type_form) to prevent `f type ...`
-    // from greedily consuming a `type` keyword that starts the next declaration.
-    application: $ => prec.left(90, seq($._expr, $._apply_rhs)),
+    clause_block: $ => seq('{', repeat($.match_arm), '}'),
 
-    // T?  (postfix optional type or optional value)
-    postfix_opt: $ => prec(100, seq($._expr, '?')),
+    match_arm: $ => seq(
+      '|',
+      repeat1(field('pattern', $._pattern)),
+      optional(field('guard', $.guard)),
+      '=>',
+      field('body', $._expr),
+      ';',
+    ),
 
-    // expr.field and expr?.field — field_identifier allows hyphens here
-    field_access: $ => prec.left(100, seq($._expr, '.', $.field_identifier)),
-    optional_chain: $ => prec.left(100, seq($._expr, '?.', $.field_identifier)),
+    import_expr: $ => seq('import', choice($.string, $.import_path)),
+    import_path: $ => /[A-Za-z_][A-Za-z0-9_-]*(?:\.[A-Za-z_][A-Za-z0-9_-]*)*/,
+
+    type_form: $ => seq('type', $._type_expr),
+
+    witness_reflect_expr: $ => seq('witness', field('constraint', $.identifier), '@', field('target', $._type_atom)),
+
+    generator_expr: $ => seq('stream', '{', repeat($.yield_stmt), '}'),
+    yield_stmt: $ => seq('yield', $._expr, ';'),
+
+    select_expr: $ => prec(110, seq('select', field('receiver', $.postfix_expr), field('fields', $.select_fields))),
+    select_operator: $ => prec.left(85, seq(field('receiver', $._expr), '>>=', field('fields', $.select_fields))),
+
+    select_fields: $ => seq('{', repeat(seq($.field_identifier, ';')), '}'),
+
+    perform_expr: $ => seq(choice('perform', '!'), field('operation', $.effect_path), field('argument', $._expr)),
+
+    handle_expr: $ => prec(120, seq(
+      'handle',
+      field('expr', $._atom_expr),
+      'with',
+      '{',
+      repeat($.handle_clause),
+      '}',
+    )),
+
+    handle_clause: $ => seq(field('operation', $.effect_path), '=', field('body', $._expr), ';'),
+
+    resume_expr: $ => seq(choice('resume', '^'), field('value', $._expr)),
+
+    effect_path: $ => seq($.field_identifier, repeat(seq('.', $.field_identifier))),
+
+    // ══════════════════════════════════════════════════════════════
+    // Type expressions
+    // ══════════════════════════════════════════════════════════════
+
+    _type_expr: $ => choice(
+      $._type_atom,
+      $.type_application,
+      $.type_select_operator,
+      $.type_effect,
+      $.type_arrow,
+      $.type_access,
+      $.type_optional_chain,
+      $.type_optional,
+    ),
+
+    _type_atom: $ => choice(
+      $.identifier,
+      $.atom,
+      $.bool,
+      $.type_record,
+      $.type_union,
+      $.type_tuple,
+      $.type_select_expr,
+      $.expr_escape,
+      seq('(', $._type_expr, ')'),
+    ),
+
+    type_application: $ => prec.left(90, seq($._type_expr, $._type_atom)),
+    type_select_operator: $ => prec.left(85, seq(field('receiver', $._type_expr), '>>=', field('fields', $.select_fields))),
+    type_effect: $ => prec.right(80, seq(field('base', $._type_expr), '!', field('effects', $.effect_row))),
+    type_arrow: $ => prec.right(10, seq(field('from', $._type_expr), '->', field('to', $._type_expr))),
+    type_access: $ => prec.left(100, seq(field('receiver', $._type_expr), '.', $.field_identifier)),
+    type_optional_chain: $ => prec.left(100, seq(field('receiver', $._type_expr), '?.', $.field_identifier)),
+    type_optional: $ => prec(100, seq($._type_expr, '?')),
+
+    type_record: $ => seq('{', repeat(choice($.type_record_field, $.row_tail)), '}'),
+    type_record_field: $ => seq(field('name', $._field_id), optional('?'), ':', field('type', $._type_expr), ';'),
+
+    type_union: $ => seq('{', repeat1(choice($.union_variant, $.row_tail)), '}'),
+    union_variant: $ => seq(field('tag', $.atom), optional(seq(':', field('payload', $._type_expr))), ';'),
+
+    row_tail: $ => seq('...', optional($.identifier), ';'),
+
+    type_tuple: $ => choice(
+      seq('(', ')'),
+      seq('(', $.type_tuple_item, ')'),
+      seq('(', $.type_tuple_item, ',', optional(seq($.type_tuple_item, repeat(seq(',', $.type_tuple_item)), optional(','))), ')'),
+    ),
+
+    type_tuple_item: $ => choice(
+      seq(field('name', $._field_id), ':', field('type', $._type_expr)),
+      $._type_expr,
+    ),
+
+    type_select_expr: $ => seq('select', field('receiver', $._type_atom), field('fields', $.select_fields)),
+
+    effect_row: $ => seq('{', optional(seq($.effect_op, repeat(seq(choice(',', ';'), $.effect_op)), optional(choice(',', ';')))), '}'),
+
+    effect_op: $ => seq(
+      field('operation', $.effect_path),
+      optional(choice(
+        seq(':', field('signature', $._type_expr)),
+        field('payload', $._type_atom),
+      )),
+    ),
+
+    expr_escape: $ => prec(1, seq('(', $._expr, ')')),
+
+    // ══════════════════════════════════════════════════════════════
+    // Postfix and operators
+    // ══════════════════════════════════════════════════════════════
+
+    postfix_expr: $ => choice($._atom_expr, $.field_access, $.optional_chain, $.record_update),
+
+    application: $ => prec.left(90, seq($._expr, $._atom_expr)),
+
+    record_update: $ => prec.left(100, seq(field('receiver', $._expr), 'with', '{', repeat($.record_field), '}')),
+
+    field_access: $ => prec.left(100, seq(field('receiver', $._expr), '.', $.field_identifier)),
+    optional_chain: $ => prec.left(100, seq(field('receiver', $._expr), '?.', $.field_identifier)),
+
+    binary_op: $ => choice(
+      prec.left(20, seq($._expr, '|>', $._expr)),
+      prec.right(20, seq($._expr, '<|', $._expr)),
+      prec.right(30, seq($._expr, '??', $._expr)),
+      prec.left(40, seq($._expr, '||', $._expr)),
+      prec.left(50, seq($._expr, '&&', $._expr)),
+      prec.left(60, seq($._expr, choice('==', '!=', '<=', '>=', '<', '>'), $._expr)),
+      prec.left(70, seq($._expr, choice('+', '-'), $._expr)),
+      prec.left(80, seq($._expr, choice('*', '/'), $._expr)),
+    ),
 
     // ══════════════════════════════════════════════════════════════
     // Patterns
@@ -420,35 +481,38 @@ module.exports = grammar({
 
     _pattern: $ => choice(
       $.literal,
+      $.tagged_pattern,
       $.atom,
       $.identifier,
       $.wildcard,
-      $.tuple_pat,
-      $.record_pat,
+      $.tuple_pattern,
+      $.record_pattern,
     ),
 
-    // `_` alone as wildcard; prec(1) makes it win over identifier for `_`
     wildcard: $ => token(prec(1, '_')),
 
-    tuple_pat: $ => choice(
+    tagged_pattern: $ => prec(2, seq(
+      field('tag', $.atom),
+      field('payload', choice($.record_pattern, $.tagged_tuple_pattern_payload)),
+    )),
+
+    tuple_pattern: $ => choice(
       seq('(', ')'),
-      seq(
-        '(',
-        $._pat_elem,
-        ',',
-        $._pat_elem,
-        repeat(seq(',', $._pat_elem)),
-        ')',
-      ),
+      seq('(', $.tuple_pattern_item, ',', optional(seq($.tuple_pattern_item, repeat(seq(',', $.tuple_pattern_item)), optional(','))), ')'),
     ),
 
-    _pat_elem: $ => choice(
-      seq($._field_id, '=', $._pattern), // named: field = pattern
-      $._pattern,                         // positional
+    tagged_tuple_pattern_payload: $ => seq(
+      '(',
+      optional(seq($.tuple_pattern_item, repeat(seq(',', $.tuple_pattern_item)), optional(','))),
+      ')',
     ),
 
-    record_pat: $ => seq('{', repeat($.record_pat_field), '}'),
+    tuple_pattern_item: $ => choice(
+      seq($._field_id, '=', $._pattern),
+      $._pattern,
+    ),
 
-    record_pat_field: $ => seq($._field_id, '=', $._pattern, ';'),
+    record_pattern: $ => seq('{', repeat($.record_pattern_field), '}'),
+    record_pattern_field: $ => seq($._field_id, '=', $._pattern, ';'),
   },
 });

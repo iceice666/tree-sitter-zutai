@@ -2,73 +2,183 @@
 Negative integer application
 ================================================================================
 
-y := f -1
+y ::= f -1
 
 --------------------------------------------------------------------------------
 
 (source_file
   (declaration
-    name: (identifier)
-    value: (application
-      (identifier)
-      (integer))))
+    (inferred_declaration
+      name: (identifier)
+      value: (application
+        (identifier)
+        (literal
+          (integer))))))
 
 ================================================================================
 Negative float application
 ================================================================================
 
-y := f -2.5e-3
+y ::= f -2.5e-3
 
 --------------------------------------------------------------------------------
 
 (source_file
   (declaration
-    name: (identifier)
-    value: (application
-      (identifier)
-      (float))))
+    (inferred_declaration
+      name: (identifier)
+      value: (application
+        (identifier)
+        (literal
+          (float))))))
 
 ================================================================================
-Tight minus remains subtraction
+Tight minus tokenizes as negative numeric application
 ================================================================================
 
-y := f-1
+y ::= f-1
 
 --------------------------------------------------------------------------------
 
 (source_file
   (declaration
-    name: (identifier)
-    value: (binary_op
-      (identifier)
-      (integer))))
+    (inferred_declaration
+      name: (identifier)
+      value: (application
+        (identifier)
+        (literal
+          (integer))))))
 
 ================================================================================
 Spaced minus remains subtraction
 ================================================================================
 
-y := f - 1
+y ::= f - 1
 
 --------------------------------------------------------------------------------
 
 (source_file
   (declaration
-    name: (identifier)
-    value: (binary_op
-      (identifier)
-      (integer))))
+    (inferred_declaration
+      name: (identifier)
+      value: (binary_op
+        (identifier)
+        (literal
+          (integer))))))
 
 ================================================================================
 Multiply by negative literal
 ================================================================================
 
-y := x * -1
+y ::= x * -1
 
 --------------------------------------------------------------------------------
 
 (source_file
   (declaration
-    name: (identifier)
-    value: (binary_op
-      (identifier)
-      (integer))))
+    (inferred_declaration
+      name: (identifier)
+      value: (binary_op
+        (identifier)
+        (literal
+          (integer))))))
+
+================================================================================
+Tagged values and record update
+================================================================================
+
+updated ::= #box { value = 1; } with { value =; }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (declaration
+    (inferred_declaration
+      name: (identifier)
+      value: (record_update
+        receiver: (tagged_value
+          tag: (atom)
+          payload: (record
+            (record_field
+              name: (identifier)
+              value: (literal
+                (integer)))))
+        (record_field
+          name: (identifier))))))
+
+================================================================================
+Select and algebraic effects
+================================================================================
+
+result ::= handle (select cfg { host; }) with { log.info = \x. resume x; }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (declaration
+    (inferred_declaration
+      name: (identifier)
+      value: (handle_expr
+        expr: (select_expr
+          receiver: (postfix_expr
+            (identifier))
+          fields: (select_fields
+            (field_identifier)))
+        (handle_clause
+          operation: (effect_path
+            (field_identifier)
+            (field_identifier))
+          body: (lambda
+            (identifier)
+            (resume_expr
+              value: (identifier))))))))
+
+================================================================================
+Constraints and witnesses
+================================================================================
+
+Eq :: <A: Show> @A { eq :: A -> A -> Bool = x y => true; } derive
+Eq @Int :: { eq = \x y. true; }
+1
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (declaration
+    (constraint_declaration
+      name: (identifier)
+      (type_params
+        (type_param
+          name: (identifier)
+          (identifier)))
+      target: (identifier)
+      body: (constraint_body
+        (constraint_method
+          name: (method_name
+            (identifier))
+          type: (type_arrow
+            from: (identifier)
+            to: (type_arrow
+              from: (identifier)
+              to: (identifier)))
+          (function_clause
+            param: (identifier)
+            param: (identifier)
+            body: (literal
+              (bool)))))
+      derive: (derive_clause)))
+  (declaration
+    (witness_declaration
+      constraint: (identifier)
+      target: (identifier)
+      body: (witness_body
+        (witness_field
+          name: (method_name
+            (identifier))
+          value: (lambda
+            (identifier)
+            (identifier)
+            (literal
+              (bool)))))))
+  (literal
+    (integer)))
